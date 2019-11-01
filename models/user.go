@@ -154,8 +154,12 @@ func createUser(ctx context.Context, accessToken, userId, identityNumber, fullNa
 					return err
 				}
 			}
+			err := createSystemWelcomeMessage(ctx, tx, user)
+			if err != nil {
+				return err
+			}
 			params, positions := compileTableQuery(usersCols)
-			_, err := tx.ExecContext(ctx, fmt.Sprintf("INSERT INTO users (%s) VALUES (%s)", params, positions), user.values()...)
+			_, err = tx.ExecContext(ctx, fmt.Sprintf("INSERT INTO users (%s) VALUES (%s)", params, positions), user.values()...)
 			return err
 		})
 		if err != nil {

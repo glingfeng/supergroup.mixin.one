@@ -230,6 +230,30 @@ func createSystemJoinMessage(ctx context.Context, tx *sql.Tx, user *User) error 
 	return err
 }
 
+func createSystemWelcomeMessage(ctx context.Context, tx *sql.Tx, user *User) error {
+	dm := &DistributedMessage{
+		MessageId:      bot.UuidNewV4().String(),
+		ConversationId: UniqueConversationId(config.AppConfig.Mixin.ClientId, user.UserId),
+		RecipientId:    user.UserId,
+		UserId:         config.AppConfig.Mixin.ClientId,
+		ParentId:       bot.UuidNewV4().String(),
+		QuoteMessageId: "",
+		Category:       MessageCategoryPlainText,
+		Data:           base64.StdEncoding.EncodeToString([]byte(config.AppConfig.MessageTemplate.WelcomeMessage)),
+		Status:         MessageStatusSent,
+		CreatedAt:      time.Now(),
+	}
+	shard, err := shardId(dm.ConversationId, dm.RecipientId)
+	if err != nil {
+		return nil, err
+	}
+	dm.Shard = shard
+	params, positions := compileTableQuery(distributedMessagesCols)
+	query := fmt.Sprintf("INSERT INTO distributed_messages (%s) VALUES (%s)", params, positions)
+	_, err := tx.ExecContext(ctx, query, dm.values()...)
+	return err
+}
+
 func PendingMessages(ctx context.Context, limit int64) ([]*Message, error) {
 	var messages []*Message
 	query := fmt.Sprintf("SELECT %s FROM messages WHERE state=$1 ORDER BY state,updated_at LIMIT $2", strings.Join(messagesCols, ","))
