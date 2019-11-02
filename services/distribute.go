@@ -19,6 +19,7 @@ var gshard map[string]bool
 
 func distribute(ctx context.Context) {
 	limit := int64(80)
+	gshard := make(map[string]bool)
 	for i := int64(0); i < config.AppConfig.System.MessageShardSize; i++ {
 		shard := shardId(config.AppConfig.System.MessageShardModifier, i)
 		if i <= 5 {
