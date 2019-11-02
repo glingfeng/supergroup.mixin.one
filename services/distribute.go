@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"sync"
 	"time"
 
 	bot "github.com/MixinNetwork/bot-api-go-client"
@@ -15,14 +17,14 @@ import (
 )
 
 var first string
-var shardSet map[string]int64
+var shardSet *sync.Map
 
 func distribute(ctx context.Context) {
 	limit := int64(80)
-	shardSet = make(map[string]int64)
+	shardSet = &sync.Map{}
 	for i := int64(0); i < config.AppConfig.System.MessageShardSize; i++ {
 		shard := shardId(config.AppConfig.System.MessageShardModifier, i)
-		shardSet[shard] = 0
+		shardSet.Store(shard, int64(0))
 		if config.AppConfig.System.MessageShardSize%2 == 0 {
 			first = shard
 		}
@@ -36,7 +38,10 @@ func distribute(ctx context.Context) {
 func pendingActiveDistributedMessages(ctx context.Context, shard string, limit int64) {
 	for {
 		t := time.Now()
-		shardSet[shard] += 1
+		if i, ok := shardSet.Load(shard); ok {
+			ii := i.(int64)
+			shardSet.Store(shard, ii+1)
+		}
 		_, err := models.CleanUpExpiredDistributedMessages(ctx, shard)
 		if err != nil {
 			session.Logger(ctx).Errorf("CleanUpExpiredDistributedMessages ERROR: %+v", err)
@@ -67,7 +72,12 @@ func pendingActiveDistributedMessages(ctx context.Context, shard string, limit i
 		}
 		if shard == first {
 			session.Logger(ctx).Infof("PendingActiveDistributedMessages UpdateMessagesStatus %s TIME::: %v", shard, time.Now().Sub(t))
-			session.Logger(ctx).Infof("PendingActiveDistributedMessages shards %+v", shardSet)
+			set := make(map[string]interface{})
+			shardSet.Range(func(k, v interface{}) bool {
+				set[fmt.Sprint(k)] = v
+				return true
+			})
+			session.Logger(ctx).Infof("PendingActiveDistributedMessages shards %+v", set)
 		}
 	}
 }
