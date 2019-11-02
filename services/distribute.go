@@ -42,7 +42,7 @@ func pendingActiveDistributedMessages(ctx context.Context, shard string, limit i
 			continue
 		}
 		if gshard[shard] {
-			session.Logger(ctx).Infof("PendingActiveDistributedMessages CleanUpExpiredDistributedMessages TIME::: %v", time.Now().Sub(t))
+			session.Logger(ctx).Infof("PendingActiveDistributedMessages CleanUpExpiredDistributedMessages %s TIME::: %v", shard, time.Now().Sub(t))
 		}
 		messages, err := models.PendingActiveDistributedMessages(ctx, shard, limit)
 		if err != nil {
@@ -61,7 +61,7 @@ func pendingActiveDistributedMessages(ctx context.Context, shard string, limit i
 			continue
 		}
 		if gshard[shard] {
-			session.Logger(ctx).Infof("PendingActiveDistributedMessages sendDistributedMessges TIME::: %v", time.Now().Sub(t))
+			session.Logger(ctx).Infof("PendingActiveDistributedMessages sendDistributedMessges %s TIME::: %v", shard, time.Now().Sub(t))
 		}
 		err = models.UpdateMessagesStatus(ctx, messages)
 		if err != nil {
@@ -70,7 +70,7 @@ func pendingActiveDistributedMessages(ctx context.Context, shard string, limit i
 			continue
 		}
 		if gshard[shard] {
-			session.Logger(ctx).Infof("PendingActiveDistributedMessages UpdateMessagesStatus TIME::: %v", time.Now().Sub(t))
+			session.Logger(ctx).Infof("PendingActiveDistributedMessages UpdateMessagesStatus %s TIME::: %v", shard, time.Now().Sub(t))
 		}
 	}
 }
