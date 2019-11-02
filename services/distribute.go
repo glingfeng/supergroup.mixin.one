@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"time"
 
@@ -15,35 +14,34 @@ import (
 	"github.com/MixinNetwork/supergroup.mixin.one/session"
 )
 
-var gshard map[string]bool
+var first string
+var shardSet map[string]int64
 
 func distribute(ctx context.Context) {
 	limit := int64(80)
-	gshard := make(map[string]bool)
+	shardSet := make(map[string]int64)
 	for i := int64(0); i < config.AppConfig.System.MessageShardSize; i++ {
 		shard := shardId(config.AppConfig.System.MessageShardModifier, i)
-		if i <= 5 {
-			gshard[shard] = true
-			log.Println("SHARD", gshard, i)
+		shardSet[shard] = 0
+		if config.AppConfig.System.MessageShardSize%2 == 0 {
+			first = shard
 		}
+	}
+	for i := int64(0); i < config.AppConfig.System.MessageShardSize; i++ {
+		shard := shardId(config.AppConfig.System.MessageShardModifier, i)
 		go pendingActiveDistributedMessages(ctx, shard, limit)
 	}
 }
 
 func pendingActiveDistributedMessages(ctx context.Context, shard string, limit int64) {
 	for {
-		var t time.Time
-		if gshard[shard] {
-			t = time.Now()
-		}
+		t := time.Now()
+		shardSet[shard] += 1
 		_, err := models.CleanUpExpiredDistributedMessages(ctx, shard)
 		if err != nil {
 			session.Logger(ctx).Errorf("CleanUpExpiredDistributedMessages ERROR: %+v", err)
 			time.Sleep(100 * time.Millisecond)
 			continue
-		}
-		if gshard[shard] {
-			session.Logger(ctx).Infof("PendingActiveDistributedMessages CleanUpExpiredDistributedMessages %s TIME::: %v", shard, time.Now().Sub(t))
 		}
 		messages, err := models.PendingActiveDistributedMessages(ctx, shard, limit)
 		if err != nil {
@@ -61,17 +59,15 @@ func pendingActiveDistributedMessages(ctx context.Context, shard string, limit i
 			time.Sleep(100 * time.Millisecond)
 			continue
 		}
-		if gshard[shard] {
-			session.Logger(ctx).Infof("PendingActiveDistributedMessages sendDistributedMessges %s TIME::: %v", shard, time.Now().Sub(t))
-		}
 		err = models.UpdateMessagesStatus(ctx, messages)
 		if err != nil {
 			session.Logger(ctx).Errorf("PendingActiveDistributedMessages UpdateMessagesStatus ERROR: %+v", err)
 			time.Sleep(100 * time.Millisecond)
 			continue
 		}
-		if gshard[shard] {
+		if shard == first {
 			session.Logger(ctx).Infof("PendingActiveDistributedMessages UpdateMessagesStatus %s TIME::: %v", shard, time.Now().Sub(t))
+			session.Logger(ctx).Infof("PendingActiveDistributedMessages shards %+v", shardSet)
 		}
 	}
 }
