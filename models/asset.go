@@ -130,6 +130,9 @@ func (current *User) ShowAsset(ctx context.Context, assetId string) (*Asset, err
 }
 
 func upsertAssets(ctx context.Context, assets []*Asset) error {
+	if len(assets) == 0 {
+		return nil
+	}
 	var values bytes.Buffer
 	for i, a := range assets {
 		if i > 0 {
