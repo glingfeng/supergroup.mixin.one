@@ -293,7 +293,7 @@ func UpdateMessagesStatus(ctx context.Context, messages []*DistributedMessage) e
 }
 
 func CleanUpExpiredDistributedMessages(ctx context.Context, shard string) (int64, error) {
-	query := fmt.Sprintf("DELETE FROM distributed_messages WHERE shard=$1 AND status=$2 AND created_at<$3 LIMIT 500")
+	query := fmt.Sprintf("DELETE FROM distributed_messages WHERE message_id IN (SELECT message_id FROM distributed_messages WHERE shard=$1 AND status=$2 AND created_at<$3 LIMIT 500)")
 	r, err := session.Database(ctx).ExecContext(ctx, query, shard, MessageStatusDelivered, time.Now().Add(-6*time.Hour))
 	if err != nil {
 		return 0, session.TransactionError(ctx, err)
