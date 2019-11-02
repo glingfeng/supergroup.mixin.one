@@ -19,7 +19,7 @@ var shardSet map[string]int64
 
 func distribute(ctx context.Context) {
 	limit := int64(80)
-	shardSet := make(map[string]int64)
+	shardSet = make(map[string]int64)
 	for i := int64(0); i < config.AppConfig.System.MessageShardSize; i++ {
 		shard := shardId(config.AppConfig.System.MessageShardModifier, i)
 		shardSet[shard] = 0
